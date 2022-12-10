@@ -16,7 +16,7 @@ describe("US-07 - Search reservations - E2E", () => {
 
   beforeAll(async () => {
     await fsPromises.mkdir("./.screenshots", { recursive: true });
-    setDefaultOptions({ timeout: 1000 });
+    setDefaultOptions({ timeout: 20000 });
   });
 
   beforeEach(async () => {
