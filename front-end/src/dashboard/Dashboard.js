@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from "react";
-import ReservationTable from "./reservationTable/ReservationTable";
 import { listReservations, listTables } from "../utils/api";
 import ErrorAlert from "../layout/ErrorAlert";
-import { useHistory } from "react-router-dom";
-import { previous, next } from "../utils/date-time";
-import TableList from "./TableList/TableList";
+import Reservation from "./Reservation";
+import Table from "./Table";
+import DateNavigation from "./DateNavigation";
 
 /**
  * Defines the dashboard page.
@@ -14,61 +13,56 @@ import TableList from "./TableList/TableList";
  */
 function Dashboard({ date }) {
   const [reservations, setReservations] = useState([]);
-  const [tables, setTables] = useState([]);
   const [reservationsError, setReservationsError] = useState(null);
-  const history = useHistory();
+
+  const [tables, setTables] = useState([]);
+  const [tablesError, setTablesError] = useState(null);
 
   useEffect(loadDashboard, [date]);
 
   function loadDashboard() {
     const abortController = new AbortController();
     setReservationsError(null);
+    setTablesError(null);
     listReservations({ date }, abortController.signal)
       .then(setReservations)
-      .then(listTables)
-      .then(setTables)
       .catch(setReservationsError);
+    listTables(abortController.signal).then(setTables).catch(setTablesError);
     return () => abortController.abort();
   }
 
-  function handleToday() {
-    history.push(`/dashboard`);
-  }
+  const reservationList = reservations.map((reservation) => (
+    <Reservation
+      loadDashboard={loadDashboard}
+      key={reservation.reservation_id}
+      reservation={reservation}
+    />
+  ));
 
-  function handlePrev() {
-    const newDate = previous(date);
-    history.push(`/dashboard?date=${newDate}`);
-  }
-
-  function handleNext() {
-    history.push(`/dashboard?date=${next(date)}`);
-  }
+  const tableList = tables.map((table) => (
+    <Table loadDashboard={loadDashboard} key={table.table_id} table={table} />
+  ));
 
   return (
     <main>
-      <h1 className="d-md-flex justify-content-center">Dashboard</h1>
-      <div className="d-md-flex mb-3 justify-content-center">
-        <h4 className="mb-0">Reservations for {date}</h4>
-      </div>
-      <div className="pb-2 d-flex justify-content-center">
-        <button className="btn btn-primary mr-1" onClick={handleToday}>
-          today
-        </button>
-        <button className="btn btn-primary mr-1" onClick={handlePrev}>
-          previous
-        </button>
-        <button className="btn btn-primary" onClick={handleNext}>
-          next
-        </button>
+      <div className="text-center mt-3 mb-5">
+        <h1>Dashboard</h1>
+        <DateNavigation date={date} />
       </div>
       <ErrorAlert error={reservationsError} />
-      <ReservationTable
-        reservations={reservations}
-        setReservations={setReservations}
-        setError={setReservationsError}
-      />
-      <div>
-        <TableList tables={tables} loadDashboard={loadDashboard} />
+      <ErrorAlert error={tablesError} />
+      <div className="container">
+        <div className="row">
+          <div className="col col-sm">
+            <h4 className="mb-4 text-center">Reservations for: {date}</h4>
+            
+            {reservationList}
+          </div>
+          <div className="col col-sm">
+            <h4 className="mb-4 text-center">Tables:</h4>
+            {tableList}
+          </div>
+        </div>
       </div>
     </main>
   );

@@ -1,71 +1,101 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { listReservations } from "../utils/api";
-import ReservationTable from "../dashboard/reservationTable/ReservationTable";
+import addDashes from "../utils/addDashes";
 import ErrorAlert from "../layout/ErrorAlert";
+import Reservation from "../dashboard/Reservation";
 
-export default function Search() {
+function Search() {
+  const initialFormState = {
+    mobile_number: "",
+  };
+
+  const [formData, setFormData] = useState({ ...initialFormState });
+  const [formErrors, setFormErrors] = useState([]);
+
   const [reservations, setReservations] = useState([]);
-  const [display, setDisplay] = useState(false);
-  const [mobile, setMobile] = useState("");
-  const [error, setError] = useState(null);
+  const [reservationsError, setReservationsError] = useState([]);
 
-  function changeHandler(e) {
-    setMobile(e.target.value);
-  }
+  const [message, setMessage] = useState(null);
 
-  async function searchHandler(e) {
-    e.preventDefault();
-    const ac = new AbortController();
-    try {
-      const reservations = await listReservations(
-        { mobile_number: mobile },
-        ac.signal
-      );
-      setReservations(reservations);
-      setDisplay(true);
-    } catch (error) {
-      setError(error);
-    }
-    return () => ac.abort();
-  }
+  const handleChange = ({ target }) => {
+    addDashes(target);
+    setFormData({
+      ...formData,
+      [target.name]: target.value,
+    });
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const abortController = new AbortController();
+    setFormErrors([]);
+    setMessage(null);
+
+    const errors = [];
+
+    setFormErrors(errors);
+
+    const mobileNumberQuery = { mobile_number: formData.mobile_number };
+
+    // Call API to list reservations
+    listReservations(mobileNumberQuery, abortController.signal)
+      .then(setReservations)
+      .catch(setReservationsError);
+
+    return () => abortController.abort();
+  };
+
+  let displayErrors = formErrors.map((error) => (
+    <ErrorAlert key={error} error={error} />
+  ));
+
+  let displayResErrors = reservationsError.map((error) => (
+    <ErrorAlert key={error} error={error} />
+  ));
+
+  const reservationList = reservations.map((reservation) => (
+    <Reservation key={reservation.reservation_id} reservation={reservation} />
+  ));
+
+  const content = reservations.length ? (
+    <div className="container mt-3">
+      <div className="row justify-content-center">
+        <div className="col col-8">{reservationList}</div>
+      </div>
+    </div>
+  ) : (
+    <h3 className="text-center mt-4">No reservations found</h3>
+  );
 
   return (
     <>
-      <div className="d-flex justify-content-center pt-3">
-        <h3>Search</h3>
+      <div className="text-center mt-3 mb-5">
+        <h1>Find Booking by Phone Number</h1>
       </div>
-      <ErrorAlert error={error} />
-      <div className="pt-3 pb-3">
-        <form className="form-group" onSubmit={searchHandler}>
-          <input
-            name="mobile_number"
-            id="mobile_number"
-            onChange={changeHandler}
-            placeholder="Enter a customer's phone number"
-            value={mobile}
-            className="form-control"
-            required
-          />
-          <div className="pt-2">
-            <button type="submit" className="btn btn-primary">
-              Find
-            </button>
-          </div>
-        </form>
-      </div>
-      {display && (
-        <div>
-          {reservations.length ? (
-            <ReservationTable
-              reservations={reservations}
-              setReservations={setReservations}
-              setError={setError}
-            />
-          ) : (
-            <h3>No reservations found</h3>
-          )}
-        </div>
-      )}
+      {formErrors.length ? displayErrors : null}
+      {reservationsError.length ? displayResErrors : null}
+      <form
+        className="form-inline d-flex justify-content-center"
+        onSubmit={handleSubmit}
+      >
+        <input
+          required
+          type="tel"
+          maxLength="12"
+          placeholder="Enter a customer's phone number"
+          onChange={handleChange}
+          value={formData.mobile_number}
+          className="form-control shadow-sm"
+          name="mobile_number"
+        ></input>
+        <button className="btn btn-primary mx-2" type="submit">
+          Find
+        </button>
+      </form>
+      {content}
+      {message}
     </>
   );
 }
+
+export default Search;
